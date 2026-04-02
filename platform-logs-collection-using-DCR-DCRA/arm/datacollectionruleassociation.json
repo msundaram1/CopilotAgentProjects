@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "ARM template to create a Data Collection Rule Association (DCRA) that links a Data Collection Rule to a target Azure resource (e.g., Virtual Machine, Virtual Machine Scale Set)."
+  },
+  "parameters": {
+    "associationName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Data Collection Rule Association."
+      }
+    },
+    "targetResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the target resource (e.g., Virtual Machine) to associate with the DCR."
+      }
+    },
+    "dataCollectionRuleId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Data Collection Rule to associate."
+      }
+    },
+    "description": {
+      "type": "string",
+      "defaultValue": "Association between a resource and the platform logs Data Collection Rule.",
+      "metadata": {
+        "description": "Description for the Data Collection Rule Association."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/dataCollectionRuleAssociations",
+      "apiVersion": "2022-06-01",
+      "scope": "[parameters('targetResourceId')]",
+      "name": "[parameters('associationName')]",
+      "properties": {
+        "description": "[parameters('description')]",
+        "dataCollectionRuleId": "[parameters('dataCollectionRuleId')]"
+      }
+    }
+  ],
+  "outputs": {
+    "associationResourceId": {
+      "type": "string",
+      "value": "[extensionResourceId(parameters('targetResourceId'), 'Microsoft.Insights/dataCollectionRuleAssociations', parameters('associationName'))]"
+    },
+    "associationName": {
+      "type": "string",
+      "value": "[parameters('associationName')]"
+    }
+  }
+}

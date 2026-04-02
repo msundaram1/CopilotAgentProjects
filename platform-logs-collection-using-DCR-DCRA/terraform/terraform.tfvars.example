@@ -1,0 +1,46 @@
+##############################################################################
+# terraform.tfvars.example
+# Copy this file to terraform.tfvars and fill in the values before deploying.
+##############################################################################
+
+resource_group_name = "rg-platform-logs"
+location            = "eastus"
+dcr_name            = "dcr-platform-logs"
+
+# ── Destinations ──────────────────────────────────────────────────────────────
+
+log_analytics_workspace_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
+
+storage_account_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account-name>"
+storage_container_name      = "platform-logs"
+
+event_hub_namespace_resource_id = "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.EventHub/namespaces/<eventhub-namespace-name>"
+event_hub_name                  = "platform-logs-hub"
+
+# ── Data Sources ──────────────────────────────────────────────────────────────
+
+collect_windows_events = true
+collect_syslog         = true
+
+windows_event_xpath_queries = [
+  "Security!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=5)]]",
+  "System!*[System[(Level=1 or Level=2 or Level=3)]]",
+  "Application!*[System[(Level=1 or Level=2 or Level=3)]]"
+]
+
+syslog_facility_names = ["auth", "authpriv", "cron", "daemon", "kern", "syslog", "user"]
+syslog_log_levels     = ["Error", "Critical", "Alert", "Emergency", "Warning"]
+
+# ── DCRA (optional) ───────────────────────────────────────────────────────────
+
+create_association = false
+association_name   = "dcra-platform-logs"
+target_resource_id = ""
+
+# ── Tags ──────────────────────────────────────────────────────────────────────
+
+tags = {
+  purpose     = "platform-logs-collection"
+  managed_by  = "azure-monitor"
+  environment = "production"
+}

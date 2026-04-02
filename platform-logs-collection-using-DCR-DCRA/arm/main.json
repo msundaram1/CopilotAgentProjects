@@ -1,0 +1,193 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Main ARM deployment template that orchestrates the creation of a Data Collection Rule (DCR) and optional Data Collection Rule Association (DCRA) for platform log collection."
+  },
+  "parameters": {
+    "dcrName": {
+      "type": "string",
+      "defaultValue": "dcr-platform-logs",
+      "metadata": {
+        "description": "Name of the Data Collection Rule."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "logAnalyticsWorkspaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Log Analytics Workspace destination."
+      }
+    },
+    "storageAccountResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Storage Account destination."
+      }
+    },
+    "eventHubNamespaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of the Event Hub Namespace destination."
+      }
+    },
+    "eventHubName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional: specific Event Hub name within the namespace."
+      }
+    },
+    "storageContainerName": {
+      "type": "string",
+      "defaultValue": "platform-logs",
+      "metadata": {
+        "description": "Storage container name for platform logs."
+      }
+    },
+    "collectWindowsEvents": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Whether to collect Windows event logs."
+      }
+    },
+    "collectSyslog": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Whether to collect Linux Syslog."
+      }
+    },
+    "createAssociation": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Set to true to create a DCRA associating the DCR to a target resource."
+      }
+    },
+    "associationName": {
+      "type": "string",
+      "defaultValue": "dcra-platform-logs",
+      "metadata": {
+        "description": "Name of the Data Collection Rule Association (used when createAssociation is true)."
+      }
+    },
+    "targetResourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Full resource ID of the target resource to associate with the DCR (used when createAssociation is true)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "purpose": "platform-logs-collection",
+        "managedBy": "azure-monitor"
+      },
+      "metadata": {
+        "description": "Resource tags to apply."
+      }
+    }
+  },
+  "variables": {
+    "logAnalyticsDestinationName": "law-destination",
+    "storageDestinationName": "storage-destination",
+    "eventHubDestinationName": "eventhub-destination"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/dataCollectionRules",
+      "apiVersion": "2022-06-01",
+      "name": "[parameters('dcrName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "description": "Data Collection Rule for collecting platform logs and sending to Log Analytics, Storage Account, and Event Hub.",
+        "dataSources": {
+          "windowsEventLogs": "[if(parameters('collectWindowsEvents'), createArray(createObject('streams', createArray('Microsoft-Event'), 'xPathQueries', createArray('Security!*[System[(Level=1 or Level=2 or Level=3 or Level=4 or Level=5)]]', 'System!*[System[(Level=1 or Level=2 or Level=3)]]', 'Application!*[System[(Level=1 or Level=2 or Level=3)]]'), 'name', 'windows-event-logs')), createArray())]",
+          "syslog": "[if(parameters('collectSyslog'), createArray(createObject('streams', createArray('Microsoft-Syslog'), 'facilityNames', createArray('auth', 'authpriv', 'cron', 'daemon', 'kern', 'syslog', 'user'), 'logLevels', createArray('Error', 'Critical', 'Alert', 'Emergency', 'Warning'), 'name', 'linux-syslog')), createArray())]"
+        },
+        "destinations": {
+          "logAnalytics": [
+            {
+              "workspaceResourceId": "[parameters('logAnalyticsWorkspaceResourceId')]",
+              "name": "[variables('logAnalyticsDestinationName')]"
+            }
+          ],
+          "storageAccounts": [
+            {
+              "storageAccountResourceId": "[parameters('storageAccountResourceId')]",
+              "containerName": "[parameters('storageContainerName')]",
+              "name": "[variables('storageDestinationName')]"
+            }
+          ],
+          "eventHubs": [
+            {
+              "eventHubResourceId": "[parameters('eventHubNamespaceResourceId')]",
+              "eventHubName": "[if(empty(parameters('eventHubName')), json('null'), parameters('eventHubName'))]",
+              "name": "[variables('eventHubDestinationName')]"
+            }
+          ]
+        },
+        "dataFlows": [
+          {
+            "streams": ["Microsoft-Event"],
+            "destinations": [
+              "[variables('logAnalyticsDestinationName')]",
+              "[variables('storageDestinationName')]",
+              "[variables('eventHubDestinationName')]"
+            ],
+            "transformKql": "source",
+            "outputStream": "Microsoft-Event"
+          },
+          {
+            "streams": ["Microsoft-Syslog"],
+            "destinations": [
+              "[variables('logAnalyticsDestinationName')]",
+              "[variables('storageDestinationName')]",
+              "[variables('eventHubDestinationName')]"
+            ],
+            "transformKql": "source",
+            "outputStream": "Microsoft-Syslog"
+          }
+        ]
+      }
+    },
+    {
+      "condition": "[parameters('createAssociation')]",
+      "type": "Microsoft.Insights/dataCollectionRuleAssociations",
+      "apiVersion": "2022-06-01",
+      "scope": "[parameters('targetResourceId')]",
+      "name": "[parameters('associationName')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+      ],
+      "properties": {
+        "description": "Association between target resource and platform logs DCR.",
+        "dataCollectionRuleId": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "dcrResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+    },
+    "dcrImmutableId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))).immutableId]"
+    },
+    "dcrName": {
+      "type": "string",
+      "value": "[parameters('dcrName')]"
+    }
+  }
+}
