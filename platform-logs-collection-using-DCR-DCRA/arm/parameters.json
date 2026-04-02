@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dcrName": {
+      "value": "dcr-platform-logs"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "logAnalyticsWorkspaceResourceId": {
+      "value": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
+    },
+    "storageAccountResourceId": {
+      "value": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<storage-account-name>"
+    },
+    "eventHubNamespaceResourceId": {
+      "value": "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.EventHub/namespaces/<eventhub-namespace-name>"
+    },
+    "eventHubName": {
+      "value": "platform-logs-hub"
+    },
+    "storageContainerName": {
+      "value": "platform-logs"
+    },
+    "collectWindowsEvents": {
+      "value": true
+    },
+    "collectSyslog": {
+      "value": true
+    },
+    "createAssociation": {
+      "value": false
+    },
+    "associationName": {
+      "value": "dcra-platform-logs"
+    },
+    "targetResourceId": {
+      "value": ""
+    },
+    "tags": {
+      "value": {
+        "purpose": "platform-logs-collection",
+        "managedBy": "azure-monitor",
+        "environment": "production"
+      }
+    }
+  }
+}
